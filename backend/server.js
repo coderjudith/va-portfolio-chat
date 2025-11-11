@@ -170,21 +170,29 @@ io.on('connection', (socket) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    
-    if (socket.id === adminSocketId) {
-      adminSocketId = null;
-    } else {
-      const conversation = conversations.get(socket.id);
-      if (conversation) {
-        conversation.status = 'inactive';
-        if (adminSocketId) {
-          io.to(adminSocketId).emit('conversation-updated', conversation);
+socket.on('disconnect', () => {
+  console.log('User disconnected:', socket.id);
+  
+  if (socket.id === adminSocketId) {
+    adminSocketId = null;
+    console.log('Admin disconnected');
+  } else {
+    const conversation = conversations.get(socket.id);
+    if (conversation) {
+      // Only mark as inactive after a delay (5 minutes)
+      setTimeout(() => {
+        const updatedConversation = conversations.get(socket.id);
+        if (updatedConversation && !updatedConversation.messages.some(msg => 
+          msg.timestamp > Date.now() - 5 * 60 * 1000 // 5 minutes
+        )) {
+          updatedConversation.status = 'inactive';
+          if (adminSocketId) {
+            io.to(adminSocketId).emit('conversation-updated', updatedConversation);
+          }
         }
-      }
+      }, 5 * 60 * 1000); // 5 minutes
     }
-  });
+  }
 });
 
 const PORT = process.env.PORT || 5000;
