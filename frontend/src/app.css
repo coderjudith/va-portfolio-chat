@@ -1,0 +1,32 @@
+.app {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.mode-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+  gap: 10px;
+}
+
+.mode-toggle button {
+  padding: 10px 20px;
+  border: 2px solid #fff;
+  background: transparent;
+  color: white;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.mode-toggle button.active {
+  background: white;
+  color: #667eea;
+}
+
+.mode-toggle button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
