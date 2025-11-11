@@ -11,14 +11,22 @@ const server = http.createServer(app);
 // Configure CORS for your portfolio domain
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000", "https://yourportfolio.com"], // Add your actual domain
+    origin: [
+      "http://localhost:3000",
+      "https://vachatwidget.netlify.app",  // Add this
+      "https://va-portfolio-chat-production.up.railway.app"  // And this
+    ],
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://127.0.0.1:3000", "https://yourportfolio.com"],
+  origin: [
+    "http://localhost:3000", 
+    "https://vachatwidget.netlify.app",  // Add this
+    "https://va-portfolio-chat-production.up.railway.app"  // And this
+  ],
   credentials: true
 }));
 app.use(express.json());
