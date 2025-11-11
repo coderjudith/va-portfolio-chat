@@ -2,53 +2,29 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS for Socket.IO
+// Simple CORS configuration that works
 const io = socketIo(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://vachatwidget.netlify.app",
-      "https://va-portfolio-chat-production.up.railway.app"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: "*",
+    methods: ["GET", "POST"]
   }
 });
 
-// Configure CORS for Express
 app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:3000",
-      "https://vachatwidget.netlify.app",
-      "https://va-portfolio-chat-production.up.railway.app"
-    ];
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
+  origin: "*"
 }));
-
 app.use(express.json());
 
-// Add a health check route
+// Add a simple health check
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Chat server is running!',
-    timestamp: new Date().toISOString()
+    status: 'OK'
   });
 });
 
@@ -98,7 +74,7 @@ io.on('connection', (socket) => {
     socket.emit('message', welcomeMessage);
   });
 
-  // Handle messages - FIXED VERSION
+  // Handle messages
   socket.on('send-message', (messageData) => {
     const conversation = conversations.get(
       messageData.sender === 'admin' ? messageData.conversationId : socket.id
@@ -118,7 +94,7 @@ io.on('connection', (socket) => {
       if (messageData.sender === 'admin') {
         // Admin sending to client
         socket.to(messageData.conversationId).emit('message', message);
-        // Also send back to admin for immediate display
+        // Also send back to admin
         socket.emit('message', {
           ...message,
           conversationId: messageData.conversationId
@@ -132,7 +108,6 @@ io.on('connection', (socket) => {
             clientName: conversation.clientName
           });
         }
-        // Also send to client (for their own message)
         socket.emit('message', message);
       }
     }
@@ -169,35 +144,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnect
-socket.on('disconnect', () => {
-  console.log('User disconnected:', socket.id);
-  
-  if (socket.id === adminSocketId) {
-    adminSocketId = null;
-    console.log('Admin disconnected');
-  } else {
-    const conversation = conversations.get(socket.id);
-    if (conversation) {
-      // Only mark as inactive after a delay (5 minutes)
-      setTimeout(() => {
-        const updatedConversation = conversations.get(socket.id);
-        if (updatedConversation && !updatedConversation.messages.some(msg => 
-          msg.timestamp > Date.now() - 5 * 60 * 1000 // 5 minutes
-        )) {
-          updatedConversation.status = 'inactive';
-          if (adminSocketId) {
-            io.to(adminSocketId).emit('conversation-updated', updatedConversation);
-          }
-        }
-      }, 5 * 60 * 1000); // 5 minutes
+  // Handle disconnect - SIMPLIFIED (no auto-inactive)
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    
+    if (socket.id === adminSocketId) {
+      adminSocketId = null;
+      console.log('Admin disconnected');
     }
-  }
+    // Don't mark conversations as inactive automatically
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`📡 Socket.IO server ready for connections`);
-  console.log(`🌐 CORS enabled for: localhost:3000, vachatwidget.netlify.app, va-portfolio-chat-production.up.railway.app`);
 });
