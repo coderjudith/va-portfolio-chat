@@ -8,28 +8,49 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS for your portfolio domain
+// Configure CORS for Socket.IO
 const io = socketIo(server, {
   cors: {
     origin: [
       "http://localhost:3000",
-      "https://vachatwidget.netlify.app",  // Add this
-      "https://va-portfolio-chat-production.up.railway.app"  // And this
+      "https://vachatwidget.netlify.app",
+      "https://va-portfolio-chat-production.up.railway.app"
     ],
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
+// Configure CORS for Express
 app.use(cors({
-  origin: [
-    "http://localhost:3000", 
-    "https://vachatwidget.netlify.app",  // Add this
-    "https://va-portfolio-chat-production.up.railway.app"  // And this
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "https://vachatwidget.netlify.app",
+      "https://va-portfolio-chat-production.up.railway.app"
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
+
+// Add a health check route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Chat server is running!',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Store active conversations
 const conversations = new Map();
@@ -77,7 +98,7 @@ io.on('connection', (socket) => {
     socket.emit('message', welcomeMessage);
   });
 
-  // Handle messages
+  // Handle messages - FIXED VERSION
   socket.on('send-message', (messageData) => {
     const conversation = conversations.get(
       messageData.sender === 'admin' ? messageData.conversationId : socket.id
@@ -93,10 +114,15 @@ io.on('connection', (socket) => {
 
       conversation.messages.push(message);
 
-      // Send to appropriate recipient
+      // Send to appropriate recipients
       if (messageData.sender === 'admin') {
         // Admin sending to client
         socket.to(messageData.conversationId).emit('message', message);
+        // Also send back to admin for immediate display
+        socket.emit('message', {
+          ...message,
+          conversationId: messageData.conversationId
+        });
       } else {
         // Client sending to admin
         if (adminSocketId) {
@@ -106,7 +132,6 @@ io.on('connection', (socket) => {
             clientName: conversation.clientName
           });
         }
-        
         // Also send to client (for their own message)
         socket.emit('message', message);
       }
@@ -166,4 +191,5 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📡 Socket.IO server ready for connections`);
+  console.log(`🌐 CORS enabled for: localhost:3000, vachatwidget.netlify.app, va-portfolio-chat-production.up.railway.app`);
 });
